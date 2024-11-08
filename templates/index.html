@@ -1,0 +1,28 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manim Video Generator</title>
+</head>
+<body>
+    <h1>Manim Video Generator</h1>
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+    {% if video %}
+        <h2>Your Video:</h2>
+        <video width="640" height="480" controls>
+            <source src="{{ video }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <br>
+        <a href="{{ url_for('index') }}">Generate another video</a>
+    {% else %}
+        <form method="post">
+            <label for="prompt">Describe the animation you want:</label><br>
+            <textarea id="prompt" name="prompt" rows="4" cols="50"></textarea><br><br>
+            <input type="submit" value="Generate Video">
+        </form>
+    {% endif %}
+</body>
+</html>
