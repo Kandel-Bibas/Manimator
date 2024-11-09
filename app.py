@@ -1,6 +1,5 @@
 import os
 from flask import Flask, render_template, request, url_for
-from dotenv import load_dotenv
 import openai
 import ast
 import subprocess
@@ -9,8 +8,7 @@ import uuid
 import shutil
 
 # Load environment variables from a .env file
-load_dotenv()
-openai.api_key = "key here" # Ensure your OpenAI API key is set
+openai.api_key = "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" # Ensure your OpenAI API key is set
 
 app = Flask(__name__)
 
@@ -42,6 +40,8 @@ Requirements:
 - Include animations using 'self.play()' with appropriate animation functions (e.g., 'Create', 'Transform', 'FadeIn', 'FadeOut', 'MoveTo', etc.).
 - The code should be executable without errors.
 - Do not include any explanations or text other than the code.
+- Use axes.plot(): In Manim v0.18.1, the get_graph() method has been replaced by axes.plot(). This is the new way to create a graph from a function. The method signature for axes.plot() does accept a function (like lambda x: np.sin(x)), and you can pass additional arguments like color directly in the method.
+  axes.plot(lambda x: np.sin(x), color=BLUE) creates the sine wave with the desired color.
 
 Provide only the code between triple backticks:
 
@@ -50,7 +50,7 @@ Provide only the code between triple backticks:
 """
     try:
         response = openai.ChatCompletion.create(
-            model='gpt-4',  # Use 'gpt-4' if you have access
+            model='gpt-4o',  # Use 'gpt-4' if you have access
             messages=[{'role': 'user', 'content': openai_prompt}],
             temperature=0  # For deterministic output
         )
