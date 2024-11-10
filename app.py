@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, url_for
+from flask import Flask, render_template, request, url_for, jsonify
+from flask_cors import CORS
 import openai
 import ast
 import subprocess
@@ -7,24 +8,24 @@ import re
 import uuid
 import shutil
 
+
+
 # Load environment variables from a .env file
 openai.api_key = "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" # Ensure your OpenAI API key is set
 
 app = Flask(__name__)
+cors = CORS(app,origins="*")
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        user_prompt = request.form['prompt']
-        video_path = generate_and_render_video(user_prompt)
-        if video_path:
-            # Generate the URL for the video file in the static directory
-            video_url = url_for('static', filename=os.path.basename(video_path))
-            return render_template('index.html', video=video_url)
-        else:
-            error_message = "Failed to generate video."
-            return render_template('index.html', error=error_message)
-    return render_template('index.html')
+@app.route('/generate', methods=['GET','POST'])
+def generate_video():
+    data = request.json
+    user_prompt = data['prompt']
+    video_path = generate_and_render_video(user_prompt)
+    if video_path:
+        video_url = url_for('static', filename=os.path.basename(video_path), _external=True)
+        return jsonify({'video': video_url})
+    else:
+        return jsonify({'error': 'Failed to generate video.'}), 400
 
 def generate_manim_code(prompt_text):
     # Craft the prompt for the AI
@@ -136,4 +137,4 @@ def generate_and_render_video(user_prompt):
         return None
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True, port = 8080, use_reloader=False)
