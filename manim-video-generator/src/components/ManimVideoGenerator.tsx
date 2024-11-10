@@ -65,7 +65,7 @@ export default function ManimVideoGenerator() {
       <main className="flex-grow flex flex-col items-center justify-center relative z-10">
         <h1 className="text-4xl font-bold font-mono mb-2 text-center">Manimator</h1>
         <p className="text-xl font-serif italic mb-8 text-center opacity-80" style={{ fontFamily: 'Doto' }}>
-          Animating your vision, frame by frame
+          Manimating your vision, frame by frame
         </p>
         <div className="w-full max-w-2xl space-y-8">
           <form onSubmit={handleSubmit} className="space-y-4">
