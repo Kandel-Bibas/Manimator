@@ -86,12 +86,17 @@ def is_valid_python_code(code):
         return False
 
 def save_code(code, filename='generated_scene.py'):
-    with open(filename, 'w') as file:
+    import os
+    # Ensure the 'codes' directory exists
+    os.makedirs('codes', exist_ok=True)
+    # Save the file in the 'codes' directory
+    filepath = os.path.join('codes', filename)
+    with open(filepath, 'w') as file:
         file.write(code)
 
 def render_video(scene_file='generated_scene.py', scene_name='GeneratedScene', output_filename='output_video.mp4'):
     command = [
-        'manim', scene_file, scene_name, '-qm'  # Medium quality
+        'manim', f'codes/{scene_file}', '-qm'  # Medium quality
     ]
     try:
         subprocess.run(command, check=True)
@@ -99,7 +104,7 @@ def render_video(scene_file='generated_scene.py', scene_name='GeneratedScene', o
         video_dir = os.path.join(
             'media',
             'videos',
-            scene_file.replace('.py', ''),
+            scene_file.replace('/codes','').replace('.py', ''),
             '720p30'  # Adjust based on quality settings
         )
         for file in os.listdir(video_dir):
@@ -137,4 +142,4 @@ def generate_and_render_video(user_prompt):
         return None
 
 if __name__ == '__main__':
-    app.run(debug=True, port = 8080, use_reloader=False)
+    app.run(debug=True, port = 8000, use_reloader=False)
