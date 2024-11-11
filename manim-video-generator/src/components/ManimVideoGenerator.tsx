@@ -1,41 +1,46 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
-import axios from 'axios';
-import { Menu, Send, Download, X } from 'lucide-react';
+import React, { useState } from 'react'
+import axios from 'axios'
+import { Menu, Send, Download, X, Play, Clipboard, CheckCircle } from 'lucide-react'
+
+type HistoryItem = {
+  prompt: string
+  videoUrl: string | null
+}
 
 export default function ManimVideoGenerator() {
-  const [prompt, setPrompt] = useState('');
-  const [isVideoAreaVisible, setIsVideoAreaVisible] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [history, setHistory] = useState<string[]>([]);
-  const [error, setError] = useState('');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [textareaHeight, setTextareaHeight] = useState('56px');
+  const [prompt, setPrompt] = useState('')
+  const [isVideoAreaVisible, setIsVideoAreaVisible] = useState(false)
+  const [videoUrl, setVideoUrl] = useState('')
+  const [history, setHistory] = useState<HistoryItem[]>([])
+  const [error, setError] = useState('')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (prompt.trim()) {
-      setError('');
-      setIsVideoAreaVisible(false);
-      setIsLoading(true);
+      setError('')
+      setIsVideoAreaVisible(false)
+      setIsLoading(true)
       try {
-        const response = await axios.post('http://localhost:8000/generate', { prompt });
+        const response = await axios.post('http://localhost:8000/generate', { prompt })
         if (response.data.video) {
-          setVideoUrl(response.data.video);
-          setIsVideoAreaVisible(true);
-          setHistory([prompt, ...history]);
+          setVideoUrl(response.data.video)
+          setIsVideoAreaVisible(true)
+          setHistory([{ prompt, videoUrl: response.data.video }, ...history])
         } else if (response.data.error) {
-          setError(response.data.error);
+          setError(response.data.error)
         }
       } catch (err) {
-        setError('Failed to generate video. Please try again.');
+        setError('Failed to generate video. Please try again.')
       } finally {
-        setIsLoading(false);
+        setIsLoading(false)
       }
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100 flex flex-col p-4 font-sans relative overflow-hidden">
@@ -72,13 +77,17 @@ export default function ManimVideoGenerator() {
             <textarea
               placeholder="Describe the animation you want..."
               value={prompt}
-              onChange={(e) => {
-                setPrompt(e.target.value);
-                setTextareaHeight('auto');
-                setTextareaHeight(`${e.target.scrollHeight}px`);
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full bg-gray-800/80 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-md p-4 focus:outline-none focus:border-blue-500 transition-colors duration-200 resize-none"
+              style={{
+                height: '120px',
+                minHeight: '120px',
+                maxHeight: '300px',
+                overflowY: 'auto',
+                lineHeight: '1.5',
+                paddingTop: '40px',
+                paddingBottom: '40px',
               }}
-              className="w-full bg-gray-800/80 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-md p-4 focus:outline-none focus:border-blue-500 transition-colors duration-200 resize-none overflow-hidden"
-              style={{ minHeight: '56px', height: textareaHeight }}
             />
             <button
               type="submit"
@@ -129,18 +138,32 @@ export default function ManimVideoGenerator() {
             <ul className="space-y-2 mb-4 max-h-[calc(100vh-12rem)] overflow-y-auto">
               {history.map((item, index) => (
                 <li key={index} className="bg-gray-700/80 p-2 rounded-md flex justify-between items-center">
-                  <span className="truncate mr-2">{item}</span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(item);
-                    }}
-                    className="text-gray-400 hover:text-gray-100 transition-colors duration-200"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                      <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                    </svg>
-                  </button>
+                  <span className="truncate mr-2">{item.prompt}</span>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(item.prompt)
+                        setCopiedIndex(index)
+                        setTimeout(() => setCopiedIndex(null), 2000)
+                      }}
+                      className="text-gray-400 hover:text-gray-100 transition-colors duration-200"
+                      title="Copy to clipboard"
+                    >
+                      {copiedIndex === index ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <Clipboard className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => item.videoUrl && window.open(item.videoUrl, '_blank')}
+                      className={`text-gray-400 transition-colors duration-200 ${item.videoUrl ? 'hover:text-gray-100' : 'opacity-50 cursor-not-allowed'}`}
+                      title={item.videoUrl ? "Play video" : "Video not available"}
+                      disabled={!item.videoUrl}
+                    >
+                      <Play className="h-5 w-5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -152,5 +175,5 @@ export default function ManimVideoGenerator() {
         </div>
       )}
     </div>
-  );
+  )
 }
