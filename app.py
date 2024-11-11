@@ -122,24 +122,43 @@ def render_video(scene_file='generated_scene.py', scene_name='GeneratedScene', o
         print(f"Rendering failed: {e}")
         return None
 
-def generate_and_render_video(user_prompt):
+
+def generate_and_render_video(user_prompt, max_attempts=3):
     unique_id = str(uuid.uuid4())
     scene_filename = f'generated_scene_{unique_id}.py'
     video_filename = f'output_video_{unique_id}.mp4'
-    code = generate_manim_code(user_prompt)
-    if code and is_valid_python_code(code):
-        # Save the generated code to a unique file
-        save_code(code, filename=scene_filename)
-        # Render the video using the unique scene file and output filename
-        video_file = render_video(scene_file=scene_filename, output_filename=video_filename)
-        if video_file and os.path.exists(video_file):
-            return video_file
-        else:
-            print("Video rendering failed.")
-            return None
-    else:
-        print("Invalid code generated.")
-        return None
+
+    for attempt in range(max_attempts):
+        try:
+            code = generate_manim_code(user_prompt)
+            if code and is_valid_python_code(code):
+                save_code(code, filename=scene_filename)
+                video_file = render_video(scene_file=scene_filename, output_filename=video_filename)
+                if video_file and os.path.exists(video_file):
+                    return video_file
+                else:
+                    raise Exception("Video rendering failed.")
+            else:
+                raise Exception("Invalid code generated.")
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            if attempt < max_attempts - 1:
+                # Prepare a new prompt with the error information
+                new_prompt = f"""
+                Previous attempt failed with the following error: {str(e)}
+                Here's the code that caused the error:
+
+                {code}
+
+                Please generate a new Manim script that addresses this error and fulfills the original request:
+                {user_prompt}
+                """
+                user_prompt = new_prompt
+            else:
+                print("All attempts failed. Proceeding with usual rendering failed error procedure.")
+                return None
+
+    return None
 
 if __name__ == '__main__':
     app.run(debug=True, port = 8000, use_reloader=False)

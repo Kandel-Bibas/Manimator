@@ -113,17 +113,20 @@ export default function ManimVideoGenerator() {
           {error && <p className="text-red-500 text-center">{error}</p>}
           {isVideoAreaVisible && (
             <div className="bg-gray-800/80 border-gray-700 rounded-lg overflow-hidden backdrop-blur-sm">
-              <div className="p-6 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-100">Generated Animation</h2>
-                <button className="bg-blue-600 hover:bg-blue-700 rounded-full p-2 transition-colors duration-200" title="Download Animation" onClick={() => window.open(videoUrl, '_blank')}>
-                  <Download className="h-5 w-5" />
-                  <span className="sr-only">Download Animation</span>
-                </button>
-              </div>
-              <div className="p-6 pt-0 relative">
-                <video width="1280" height="720" controls className="w-full rounded-lg">
-                  <source src={videoUrl} type="video/mp4" />
-                  Your browser does not support the video tag.
+                <div className="p-6 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-gray-100">Generated Animation</h2>
+                    <a href={videoUrl}
+                       className="bg-blue-600 hover:bg-blue-700 rounded-full p-2 transition-colors duration-200"
+                       title="Download Animation">
+                        <Download className="h-5 w-5"/>
+                        <span className="sr-only">Download Animation</span>
+                    </a>
+
+                </div>
+                <div className="p-6 pt-0 relative">
+                    <video width="1280" height="720" controls className="w-full rounded-lg">
+                        <source src={videoUrl} type="video/mp4"/>
+                        Your browser does not support the video tag.
                 </video>
               </div>
             </div>
