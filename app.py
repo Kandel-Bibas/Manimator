@@ -9,6 +9,7 @@ import uuid
 import shutil
 import time
 from werkzeug.utils import secure_filename
+from slide_generator import make_animation_and_slide
 
 
 
@@ -37,20 +38,41 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+
 @app.route('/generate-from-file', methods=['POST'])
 def generate_from_file():
+
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     file = request.files['file']
     if file.filename == '':
+
         return jsonify({'error': 'No selected file'}), 400
+    
     if file and allowed_file(file.filename):
-        filename = secure_filename(str(uuid.uuid4()) + '_' + file.filename)
+
+        filename = file.filename
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         file.save(file_path)
-        time.sleep(60)
-        return send_file(file_path, as_attachment=True)
+
+        pptx_path = make_animation_and_slide(file_path)
+
+        if pptx_path.endswith('.pptx') and os.path.exists(pptx_path):
+            print(pptx_path)
+
+            return send_file(
+                pptx_path,
+                as_attachment=True,
+                mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                download_name=os.path.basename(pptx_path)
+            )
+        # return send_file(pptx,
+        #                   as_attachment=False,
+        #                     mimetype = 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        #                     download_name = str(pptx))
     else:
         return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
 

@@ -1,8 +1,8 @@
 MAKE_JSON_PROMPT = """Put all of the contents of the lesson plan into a detailed template for a slide show in JSON format.
 Take following json as an input, generate elements content based on prompt and prepare and return json structure by combining all elements such as: {'heading': '<value>'}.
 
-We are trying to create slide shows for a lesson plan. Fill in the following elements with content from the lesson plan to create as many slides as needed to display all the content.
-Create one overarching intro slide and name it. For the following slides add a title for each slide (appx 40 chars), and 1-2 sentence teaching the content for each slide , add a description of the math examples that is being taught and add an example problem. Replace <value> in plain text.
+We are trying to create slide shows for a lesson plan Fill in the following elements with content from the lesson plan to create as many slides as needed to display all the content.
+Create one overarching intro slide and name it. For the following slides add a title for each slide (appx 40 chars), and 1-2 sentence teaching the content for each slide , add a description of the math examples is being taught or add an example problem if not provided. Replace <value> in plain text.
 
 {
   "topic title": "<value>",
@@ -10,7 +10,7 @@ Create one overarching intro slide and name it. For the following slides add a t
   "example": "<value>"
 }
 
-"""
+Let the json file be titled "slides". Make sure the title slide has a key "example", but the value must be empty."""
 
 
 
