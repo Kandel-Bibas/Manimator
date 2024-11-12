@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, url_for, jsonify
+from flask import Flask, render_template, request, url_for, jsonify, send_file
 from flask_cors import CORS
 import openai
 import ast
@@ -7,6 +7,8 @@ import subprocess
 import re
 import uuid
 import shutil
+import time
+from werkzeug.utils import secure_filename
 
 
 
@@ -26,29 +28,55 @@ def generate_video():
         return jsonify({'video': video_url})
     else:
         return jsonify({'error': 'Failed to generate video.'}), 400
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'pdf'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/generate-from-file', methods=['POST'])
+def generate_from_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(str(uuid.uuid4()) + '_' + file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(file_path)
+        time.sleep(60)
+        return send_file(file_path, as_attachment=True)
+    else:
+        return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
+
 
 def generate_manim_code(prompt_text):
     # Craft the prompt for the AI
     openai_prompt = f"""
-As a Manim expert using Manim Community version 0.18.1, generate a Manim Python script that visualizes the following description:
+As a Manim expert in Community version 0.18.1, generate a Python script for the description below:
 
 \"\"\"{prompt_text}\"\"\"
 
 Requirements:
-- The script should include all necessary imports.
-- Define a Scene subclass called 'GeneratedScene'.
-- Use methods and classes compatible with Manim Community v0.18.1.
-- Include animations using 'self.play()' with appropriate animation functions (e.g., 'Create', 'Transform', 'FadeIn', 'FadeOut', 'MoveTo', etc.).
-- The code should be executable without errors.
-- Do not include any explanations or text other than the code.
-- Use axes.plot(): In Manim v0.18.1, the get_graph() method has been replaced by axes.plot(). This is the new way to create a graph from a function. The method signature for axes.plot() does accept a function (like lambda x: np.sin(x)), and you can pass additional arguments like color directly in the method.
-  axes.plot(lambda x: np.sin(x), color=BLUE) creates the sine wave with the desired color.
+- Include necessary imports and define a 'GeneratedScene' subclass.
+- Use compatible animation methods (Create, Transform, FadeIn, etc.).
+- Ensure executable code without errors; use MathTex for math expressions if LaTeX issues arise.
+- Text must be centered, within bounds, and appropriately sized to avoid overflow.
+- In step-by-step explanations, each step should appear on a new page with its description at the top.
+- Properly handle braces in LaTeX, avoiding unintended double braces.
+- For graphing, use `axes.plot()`, e.g., `axes.plot(lambda x: np.sin(x), color=BLUE)`.
 
 Provide only the code between triple backticks:
 
 ```python
 # Your code here
 """
+
     try:
         response = openai.ChatCompletion.create(
             model='gpt-4o',  # Use 'gpt-4' if you have access
@@ -149,7 +177,10 @@ def generate_and_render_video(user_prompt, max_attempts=3):
                 Here's the code that caused the error:
 
                 {code}
-
+                
+                
+                - In cases where LaTeX compatibility remains an issue, you might try using MathTex (specifically for math expressions) in place of regular Tex,
+                - “Generate LaTeX code for Manim with proper brace handling, avoiding unintended double braces and ensuring all expressions are fully enclosed.”
                 Please generate a new Manim script that addresses this error and fulfills the original request:
                 {user_prompt}
                 """

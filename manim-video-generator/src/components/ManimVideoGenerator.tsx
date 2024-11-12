@@ -1,12 +1,13 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import axios from 'axios'
-import { Menu, Send, Download, X, Play, Clipboard, CheckCircle } from 'lucide-react'
+import { Menu, Send, Download, X, Play, Clipboard, CheckCircle, Upload } from 'lucide-react'
 
 type HistoryItem = {
   prompt: string
   videoUrl: string | null
+  fileUrl?: string
 }
 
 export default function ManimVideoGenerator() {
@@ -18,13 +19,52 @@ export default function ManimVideoGenerator() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [downloadFileUrl, setDownloadFileUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (prompt.trim()) {
+    if (selectedFile) {
+      // Handle file upload generation
       setError('')
       setIsVideoAreaVisible(false)
       setIsLoading(true)
+      setDownloadFileUrl(null)
+
+      const formData = new FormData()
+      formData.append('file', selectedFile)
+
+      try {
+        const response = await axios.post('http://localhost:8000/generate-from-file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+          responseType: 'blob',
+        })
+
+        const fileUrl = window.URL.createObjectURL(new Blob([response.data]))
+        setDownloadFileUrl(fileUrl)
+        setHistory([{ prompt: `File: ${selectedFile.name}`, videoUrl: null, fileUrl }, ...history])
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
+          setError(`Failed to process file: ${err.response.data.error || 'Unknown error'}`)
+        } else {
+          setError('Failed to process file. Please try again.')
+        }
+      } finally {
+        setIsLoading(false)
+        setSelectedFile(null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+    } else if (prompt.trim()) {
+      // Handle text prompt generation
+      setError('')
+      setIsVideoAreaVisible(false)
+      setIsLoading(true)
+      setDownloadFileUrl(null)
       try {
         const response = await axios.post('http://localhost:8000/generate', { prompt })
         if (response.data.video) {
@@ -39,6 +79,12 @@ export default function ManimVideoGenerator() {
       } finally {
         setIsLoading(false)
       }
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0])
     }
   }
 
@@ -74,21 +120,57 @@ export default function ManimVideoGenerator() {
         </p>
         <div className="w-full max-w-2xl space-y-8">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <textarea
-              placeholder="Describe the animation you want..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="w-full bg-gray-800/80 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-md p-4 focus:outline-none focus:border-blue-500 transition-colors duration-200 resize-none"
-              style={{
-                height: '120px',
-                minHeight: '120px',
-                maxHeight: '300px',
-                overflowY: 'auto',
-                lineHeight: '1.5',
-                paddingTop: '40px',
-                paddingBottom: '40px',
-              }}
-            />
+            <div className="relative">
+              <textarea
+                placeholder="Describe the animation you want..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-full bg-gray-800/80 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-md p-4 focus:outline-none focus:border-blue-500 transition-colors duration-200 resize-none"
+                style={{
+                  height: '120px',
+                  minHeight: '120px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  lineHeight: '1.5',
+                  paddingTop: '40px',
+                  paddingBottom: '40px',
+                }}
+              />
+              <div className="absolute right-2 top-2 flex gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  accept=".pdf"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-gray-700 hover:bg-gray-600 rounded-md px-3 py-1.5 text-sm flex items-center gap-2 transition-colors duration-200"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload
+                </button>
+              </div>
+              {selectedFile && (
+                <div className="absolute left-2 top-2 bg-gray-700 rounded-md px-3 py-1.5 text-sm flex items-center gap-2">
+                  <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedFile(null)
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = ''
+                      }
+                    }}
+                    className="text-gray-400 hover:text-gray-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 rounded-md p-4 flex items-center justify-center transition-colors duration-200"
@@ -100,33 +182,47 @@ export default function ManimVideoGenerator() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Generating...
+                  Processing...
                 </>
               ) : (
                 <>
                   <Send className="h-5 w-5 mr-2" />
-                  Generate Video
+                  Generate
                 </>
               )}
             </button>
           </form>
           {error && <p className="text-red-500 text-center">{error}</p>}
+          {downloadFileUrl && (
+            <div className="bg-gray-800/80 border-gray-700 rounded-lg overflow-hidden backdrop-blur-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-100 mb-4">File Processed</h2>
+              <a
+                href={downloadFileUrl}
+                download={selectedFile?.name || 'processed_file'}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
+              >
+                <Download className="h-5 w-5 mr-2" />
+                Download Processed File
+              </a>
+            </div>
+          )}
           {isVideoAreaVisible && (
             <div className="bg-gray-800/80 border-gray-700 rounded-lg overflow-hidden backdrop-blur-sm">
-                <div className="p-6 flex justify-between items-center">
-                    <h2 className="text-lg font-semibold text-gray-100">Generated Animation</h2>
-                    <a href={videoUrl}
-                       className="bg-blue-600 hover:bg-blue-700 rounded-full p-2 transition-colors duration-200"
-                       title="Download Animation">
-                        <Download className="h-5 w-5"/>
-                        <span className="sr-only">Download Animation</span>
-                    </a>
-
-                </div>
-                <div className="p-6 pt-0 relative">
-                    <video width="1280" height="720" controls className="w-full rounded-lg">
-                        <source src={videoUrl} type="video/mp4"/>
-                        Your browser does not support the video tag.
+              <div className="p-6 flex justify-between items-center">
+                <h2 className="text-lg font-semibold text-gray-100">Generated Animation</h2>
+                <a
+                  href={videoUrl}
+                  className="bg-blue-600 hover:bg-blue-700 rounded-full p-2 transition-colors duration-200"
+                  title="Download Animation"
+                >
+                  <Download className="h-5 w-5" />
+                  <span className="sr-only">Download Animation</span>
+                </a>
+              </div>
+              <div className="p-6 pt-0 relative">
+                <video width="1280" height="720" controls className="w-full rounded-lg">
+                  <source src={videoUrl} type="video/mp4" />
+                  Your browser does not support the video tag.
                 </video>
               </div>
             </div>
@@ -158,19 +254,32 @@ export default function ManimVideoGenerator() {
                         <Clipboard className="h-5 w-5" />
                       )}
                     </button>
-                    <button
-                      onClick={() => item.videoUrl && window.open(item.videoUrl, '_blank')}
-                      className={`text-gray-400 transition-colors duration-200 ${item.videoUrl ? 'hover:text-gray-100' : 'opacity-50 cursor-not-allowed'}`}
-                      title={item.videoUrl ? "Play video" : "Video not available"}
-                      disabled={!item.videoUrl}
-                    >
-                      <Play className="h-5 w-5" />
-                    </button>
+                    {item.videoUrl ? (
+                      <button
+                        onClick={() => item.videoUrl && window.open(item.videoUrl, '_blank')}
+                        className="text-gray-400 hover:text-gray-100 transition-colors duration-200"
+                        title="Play video"
+                      >
+                        <Play className="h-5 w-5" />
+                      </button>
+                    ) : item.fileUrl ? (
+                      <a
+                        href={item.fileUrl}
+                        download
+                        className="text-gray-400 hover:text-gray-100 transition-colors duration-200"
+                        title="Download file"
+                      >
+                        <Download className="h-5 w-5" />
+                      </a>
+                    ) : null}
                   </div>
                 </li>
               ))}
             </ul>
-            <button onClick={() => setIsMenuOpen(false)} className="w-full bg-blue-600 hover:bg-blue-700 rounded-md p-2 flex items-center justify-center transition-colors duration-200">
+            <button
+              onClick={() => setIsMenuOpen(false)}
+              className="w-full bg-blue-600 hover:bg-blue-700 rounded-md p-2 flex items-center justify-center transition-colors duration-200"
+            >
               <X className="h-5 w-5 mr-2" />
               Close
             </button>
