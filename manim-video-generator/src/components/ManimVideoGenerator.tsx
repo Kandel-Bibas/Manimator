@@ -40,12 +40,14 @@ export default function ManimVideoGenerator() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          responseType: 'blob',
         })
 
-        const fileUrl = window.URL.createObjectURL(new Blob([response.data]))
-        setDownloadFileUrl(fileUrl)
-        setHistory([{ prompt: `File: ${selectedFile.name}`, videoUrl: null, fileUrl }, ...history])
+        if (response.data.pptx_url) {
+          setDownloadFileUrl(response.data.pptx_url)
+          setHistory([{ prompt: `File: ${selectedFile.name}`, videoUrl: null, fileUrl: response.data.pptx_url }, ...history])
+        } else {
+          throw new Error('No PPTX URL received from the server')
+        }
       } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
           setError(`Failed to process file: ${err.response.data.error || 'Unknown error'}`)
@@ -195,14 +197,14 @@ export default function ManimVideoGenerator() {
           {error && <p className="text-red-500 text-center">{error}</p>}
           {downloadFileUrl && (
             <div className="bg-gray-800/80 border-gray-700 rounded-lg overflow-hidden backdrop-blur-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-100 mb-4">File Processed</h2>
+              <h2 className="text-lg font-semibold text-gray-100 mb-4">PPTX Generated</h2>
               <a
                 href={downloadFileUrl}
-                download={selectedFile?.name || 'processed_file'}
+                download="generated_presentation.pptx"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center"
               >
                 <Download className="h-5 w-5 mr-2" />
-                Download Processed File
+                Download PPTX
               </a>
             </div>
           )}

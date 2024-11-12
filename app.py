@@ -29,53 +29,52 @@ def generate_video():
         return jsonify({'video': video_url})
     else:
         return jsonify({'error': 'Failed to generate video.'}), 400
+
+
 UPLOAD_FOLDER = 'uploads'
+STATIC_FOLDER = 'static'  # Folder for storing accessible files like pptx
 ALLOWED_EXTENSIONS = {'pdf'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @app.route('/generate-from-file', methods=['POST'])
 def generate_from_file():
-
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
+
     file = request.files['file']
     if file.filename == '':
-
         return jsonify({'error': 'No selected file'}), 400
-    
+
     if file and allowed_file(file.filename):
-
-        filename = file.filename
+        # Save uploaded PDF file
+        filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
         os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         file.save(file_path)
 
+        # Generate PPTX file
         pptx_path = make_animation_and_slide(file_path)
 
         if pptx_path.endswith('.pptx') and os.path.exists(pptx_path):
-            print(pptx_path)
+            # Move PPTX file to the static folder
+            pptx_filename = os.path.basename(pptx_path)
+            static_pptx_path = os.path.join(STATIC_FOLDER, pptx_filename)
+            os.makedirs(STATIC_FOLDER, exist_ok=True)
+            shutil.move(pptx_path, static_pptx_path)
 
-            return send_file(
-                pptx_path,
-                as_attachment=True,
-                mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation',
-                download_name=os.path.basename(pptx_path)
-            )
-        # return send_file(pptx,
-        #                   as_attachment=False,
-        #                     mimetype = 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        #                     download_name = str(pptx))
+            # Generate URL for the PPTX file
+            pptx_url = url_for('static', filename=pptx_filename, _external=True)
+            return jsonify({'pptx_url': pptx_url})
+        else:
+            return jsonify({'error': 'Failed to generate PPTX file.'}), 500
     else:
         return jsonify({'error': 'Invalid file type. Only PDF files are allowed.'}), 400
-
 
 def generate_manim_code(prompt_text):
     # Craft the prompt for the AI
